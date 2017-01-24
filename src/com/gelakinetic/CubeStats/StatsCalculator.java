@@ -29,7 +29,7 @@ import java.util.ArrayList;
 public class StatsCalculator {
 
     /** The size of the desired cube */
-    private static final int CUBE_SIZE = 480;
+    private static final int CUBE_SIZES[] = {360, 480, 720};
 
     /** All the colors. The first entry to each array is just a label */
     private static final String[][] COLORS = {
@@ -139,31 +139,31 @@ public class StatsCalculator {
                 }
             }
 
-            /* Now that we know the count for each color/type/cmc, and the total
-             * number of returned rows, scale them to the desired cube size
-             */
-            int totalCubeCount = 0;
-            for(CubeStats stats: allStats) {
-
-                /* Do a little math to scale to the cube size, round, and clamp
-                 * to an integer
-                 */
-                int cubeCount = (int) Math.round(
-                        CUBE_SIZE * (stats.mCount / ((double)totalSize)));
-
-                /* If there is some number of this color/type/cmc combo */
-                if(cubeCount != 0) {
-
-                    /* Print it out */
-                    System.out.print(stats);
-                    System.out.println(cubeCount);
-                    totalCubeCount += cubeCount;
-                }
+            for(int CUBE_SIZE : CUBE_SIZES) {
+	            /* Now that we know the count for each color/type/cmc, and the total
+	             * number of returned rows, scale them to the desired cube size
+	             */
+	            int totalCubeCount = 0;
+	            for(CubeStats stats: allStats) {
+	
+	                /* Do a little math to scale to the cube size, round, and clamp
+	                 * to an integer
+	                 */
+	                int cubeCount = (int) Math.round(
+	                        CUBE_SIZE * (stats.mCount / ((double)totalSize)));
+	
+	                /* If there is some number of this color/type/cmc combo */
+	                if(stats.mCount != 0) {
+	
+	                    /* Print it out */
+	                    System.out.print(String.format("%s\t%d\t%.6f\n", stats, cubeCount, stats.mCount / ((double)totalSize)));
+	                    totalCubeCount += cubeCount;
+	                }
+	            }
+	
+	            /* Print the total number of scaled cube cards */
+	            System.out.println("Total Cube Count: " + totalCubeCount);
             }
-
-            /* Print the total number of scaled cube cards */
-            System.out.println("Total Cube Count: " + totalCubeCount);
-
         } catch (SQLException | ClassNotFoundException e) {
             /* For exceptions, just print them out and exit cleanly */
             System.err.println(e.getClass().getName() + ": " + e.getMessage());
@@ -244,11 +244,17 @@ public class StatsCalculator {
     public static String buildQuery(String[] colors, String[] type, char rarity,
             int cmc) {
         /* Select all cards from Modern, excluding basic lands */
-        String query = "SELECT cards._id FROM"
-                + " (cards JOIN legal_sets"
-                + " ON (cards.expansion = legal_sets.expansion))"
-                + " WHERE (legal_sets.format = 'Modern')"
-                + " AND (cards.supertype NOT LIKE 'Basic%')";
+      String query = "SELECT cards._id FROM"
+      + " (cards JOIN legal_sets"
+      + " ON (cards.expansion = legal_sets.expansion))"
+      + " WHERE (legal_sets.format = 'Modern')"
+      + " AND (cards.supertype NOT LIKE 'Basic%')";
+    	
+//		String query = "SELECT cards._id FROM"
+//			+ " (cards JOIN sets"
+//			+ " ON (cards.expansion = sets.code))"
+//			+ " WHERE (sets.code = 'ISD')"
+//			+ " AND (cards.supertype NOT LIKE 'Basic%')";
 
         /* For nonlands, make sure they have a mana cost (filters multicards) */
         if(!type[0].equals("Land")) {

@@ -58,7 +58,7 @@ public class CubeStats {
 
         /* If the entry has a converted mana cost, add it to the label */
         if(mCmc >= 0) {
-            return label + ", {" + mCmc + "}: ";
+            return label + ", {" + mCmc + "}";
         }
 
         /* Otherwise leave it out */
