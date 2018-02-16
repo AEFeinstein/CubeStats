@@ -29,7 +29,7 @@ import java.util.ArrayList;
 public class StatsCalculator {
 
     /** The size of the desired cube */
-    private static final int CUBE_SIZES[] = {360, 480, 720};
+    private static final int CUBE_SIZES[] = {450, 451, 452, 453, 454, 455};
 
     /** All the colors. The first entry to each array is just a label */
     private static final String[][] COLORS = {
@@ -40,30 +40,30 @@ public class StatsCalculator {
             {"Green", "G", "AG"},
             {"Colorless", "A", "C"},
             {"Land", "L", "LG", "AL"},
-            {"Gold", "WU", "BR", "UB", "WG", "RG", "WR", "UG", "BG", "UR",
-                "WB", "UBR", "BRG", "WUG", "WUB", "WRG", "WBR", "UBG", "URG",
-                "WUR", "WBG", "AUB", "AWB", "AWU", "ABR", "ARG", "AWG", "AUR",
-                "AUG", "AWUB", "AUBR", "WBRG", "UBRG", "WURG", "WUBG", "WUBR",
+            {"Gold",
+                "WG", "WB", "UR", "RG", "WR", "UG", "WU", "UB", "BR", "BG",
+                "AWG", "AWB", "AUR", "ARG", "AWR", "AUG", "AWU", "AUB", "ABR", "ABG",
+                "UBR", "BRG", "WRG", "WUG", "WUB", "WBR", "UBG", "URG", "WUR", "WBG",
+                "AUBR", "ABRG", "AWRG", "AWUG", "AWUB", "AWBR", "AUBG", "AURG", "AWUR", "AWBG",
+                "WUBG", "WURG", "WBRG", "UBRG", "WUBR", 
+                "AWUBG", "AWURG", "AWBRG", "AUBRG", "AWUBR", 
                 "WUBRG", "AWUBRG"}
     };
 
-    /** All the types. They are in distinct buckets (i.e. Artifact Lands don't
-     *  count as Artifacts */
-    private static final String[][] TYPES = {
-            {"Land", "Artifact Land", "Land Creature", "Basic Land",
-                "Legendary Land", "Basic Snow Land", "Legendary Snow Land",
-                "Snow Land"},
-            {"Creature", "Artifact Creature", "Legendary Artifact Creature",
-                    "Legendary Creature", "Snow Artifact Creature",
-                    "Snow Creature", "Enchantment Creature",
-                    "Legendary Enchantment Creature"},
-            {"Artifact", "Snow Artifact", "Legendary Artifact",
-                        "Tribal Artifact", "Legendary Enchantment Artifact"},
-            {"Enchantment", "Legendary Enchantment", "Tribal Enchantment",
-                            "Snow Enchantment"},
-            {"Instant", "Tribal Instant"},
-            {"Sorcery", "Tribal Sorcery"},
-            {"Planeswalker"}
+    /** 
+     * All the types. They are in distinct buckets (i.e. Artifact Lands don't
+     * count as Artifacts. The search is ordered, so first it searches for all
+     * lands, then creatures NOT lands, then artifacts NOT creatures NOT lands,
+     * etc
+     */
+    private static final String[] TYPES = {
+            "Land",
+            "Creature",
+            "Artifact",
+            "Enchantment",
+            "Instant",
+            "Sorcery",
+            "Planeswalker",
     };
 
     /** All the converted mana costs */
@@ -97,18 +97,19 @@ public class StatsCalculator {
             /* Open up the database */
             Class.forName("org.sqlite.JDBC");
             dbConnection = DriverManager.getConnection(
-                "jdbc:sqlite:C:\\Users\\Adam\\git\\CubeStats\\mtg.db");
+                "jdbc:sqlite:mtg.db");
 
             /* For all the colors */
             for (String[] color : COLORS) {
                 System.out.println("Processing " + color[0]);
 
+                ArrayList<String> notTypes = new ArrayList<>();
                 /* For all the card types */
-                for(String[] type : TYPES) {
-                    System.out.println("\t" + type[0]);
+                for(String type : TYPES) {
+                    System.out.println("\t" + type);
 
                     /* If the type is Creature */
-                    if(type[0].equals("Creature")) {
+                    if(type.equals("Creature")) {
 
                         /* For all the mana costs */
                         for(int cmc : CONVERTED_MANA_COSTS) {
@@ -116,8 +117,8 @@ public class StatsCalculator {
                             /* Do the query and store the result */
                             System.out.println("\t\t" + cmc);
                             int count = getScaledQueryCount(dbConnection,
-                                    color, type, cmc);
-                            allStats.add(new CubeStats(color[0], type[0], cmc,
+                                    color, type, notTypes, cmc);
+                            allStats.add(new CubeStats(color[0], type, cmc,
                                     count));
 
                             /* Keep a count of all scaled query counts */
@@ -129,13 +130,14 @@ public class StatsCalculator {
                         /* For non-creatures, don't worry about converted mana
                          * cost. Do the query and store the result */
                         int count = getScaledQueryCount(dbConnection, color,
-                                type, -1);
-                        allStats.add(new CubeStats(color[0], type[0], -1,
+                                type, notTypes, -1);
+                        allStats.add(new CubeStats(color[0], type, -1,
                                 count));
 
                         /* Keep a count of all scaled query counts */
                         totalSize += count;
                     }
+                    notTypes.add(type);
                 }
             }
 
@@ -201,7 +203,7 @@ public class StatsCalculator {
      * @throws SQLException
      */
     public static int getScaledQueryCount(Connection connection,
-            String[] colors, String[] type, int cmc)
+            String[] colors, String type, ArrayList<String> notTypes, int cmc)
             throws SQLException {
 
         int scaledCount = 0;
@@ -212,7 +214,7 @@ public class StatsCalculator {
             /* Perform the query */
             Statement statement = connection.createStatement();
             ResultSet resultSet = statement.executeQuery(buildQuery(colors,
-                    type, rarity.mRarity, cmc));
+                    type, notTypes, rarity.mRarity, cmc));
 
             /* Count the results */
             int tmpCount = 0;
@@ -241,23 +243,18 @@ public class StatsCalculator {
      *               If this value is negative, it is ignored
      * @return       A SQL query to search for cards
      */
-    public static String buildQuery(String[] colors, String[] type, char rarity,
+    public static String buildQuery(String[] colors, String type, ArrayList<String> notTypes, char rarity,
             int cmc) {
+        
         /* Select all cards from Modern, excluding basic lands */
-      String query = "SELECT cards._id FROM"
-      + " (cards JOIN legal_sets"
-      + " ON (cards.expansion = legal_sets.expansion))"
-      + " WHERE (legal_sets.format = 'Modern')"
-      + " AND (cards.supertype NOT LIKE 'Basic%')";
-    	
-//		String query = "SELECT cards._id FROM"
-//			+ " (cards JOIN sets"
-//			+ " ON (cards.expansion = sets.code))"
-//			+ " WHERE (sets.code = 'ISD')"
-//			+ " AND (cards.supertype NOT LIKE 'Basic%')";
+        String query = "SELECT cards._id FROM"
+            + " (cards JOIN legal_sets"
+            + " ON (cards.expansion = legal_sets.expansion))"
+            + " WHERE (legal_sets.format = 'Modern')"
+            + " AND (cards.supertype NOT LIKE 'Basic%')";
 
         /* For nonlands, make sure they have a mana cost (filters multicards) */
-        if(!type[0].equals("Land")) {
+        if(!type.equals("Land")) {
             query += " AND (cards.manacost != '')";
         }
 
@@ -268,7 +265,10 @@ public class StatsCalculator {
 
         /* Add a supertype filter */
         if (type != null) {
-            query += appendListToQuery("cards.supertype", type);
+            query += " AND (cards.supertype LIKE '%" + type + "%') ";
+        }
+        if(notTypes != null && !notTypes.isEmpty()) {
+            query += appendNotListToQuery("cards.supertype", notTypes);
         }
 
         /* Add a cmc filter */
@@ -283,6 +283,28 @@ public class StatsCalculator {
 
         /* Return the built query */
         return query + ";";
+    }
+
+    /**
+     * Build a SQL string where the value in the given column cannot partially
+     * match any of the given options
+     * 
+     * @param column    The column to check in the SQL database
+     * @param options   All the options the column cannot partially match
+     * @return A string of the form:
+     *         " AND (field NOT LIKE '%option1%' AND field NOT LIKE '%option2%' ...)"
+     */
+    private static String appendNotListToQuery(String column, ArrayList<String> options) {
+        boolean first = true;
+        String query = " AND (";
+        for (String option : options) {
+            if (!first) {
+                query += "AND ";
+            }
+            query += column + " NOT LIKE '%" + option + "%' ";
+            first = false;
+        }
+        return query + ")";
     }
 
     /**
