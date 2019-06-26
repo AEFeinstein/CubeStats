@@ -7,14 +7,12 @@ import java.util.regex.Pattern;
 class MtgCard {
 
     private String color;
-    private String colorIdentity;
     private char rarity;
     private int cmc;
     private String supertype;
 
     MtgCard(ResultSet cursor) throws SQLException {
         this.color = cursor.getString(cursor.findColumn("color"));
-        this.colorIdentity = cursor.getString(cursor.findColumn("color_identity"));
         this.rarity = (char) cursor.getInt(cursor.findColumn("rarity"));
         this.cmc = cursor.getInt(cursor.findColumn("cmc"));
         this.supertype = cursor.getString(cursor.findColumn("supertype"));
@@ -33,12 +31,10 @@ class MtgCard {
         // Lands are always colorless
         if (this.supertype.toLowerCase().contains("land")) {
             this.color = "";
-            this.colorIdentity = "";
         }
         // Artifacts are colorless too
         else if (this.supertype.toLowerCase().contains("artifact") && !r.matcher(manacost).matches()) {
             this.color = "";
-            this.colorIdentity = "";
         }
     }
 
