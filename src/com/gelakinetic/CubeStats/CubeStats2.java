@@ -32,25 +32,16 @@ import com.google.gson.GsonBuilder;
 public class CubeStats2 {
 
 	/**
-	 * All the types. They are in distinct buckets (i.e. Artifact Lands don't count
-	 * as Artifacts. The search is ordered, so first it searches for all lands, then
-	 * creatures NOT lands, then artifacts NOT creatures NOT lands, etc
-	 */
-	private static final String[] TYPES = { "Creature", "Artifact", "Enchantment", "Instant", "Sorcery", "Planeswalker",
-			"Land", };
-
-	/**
 	 * Given the database of Magic cards used by MTG Familiar and a cube size,
 	 * figure out how many of each card color, type, and converted mana cost (for
 	 * creatures) are necessary
 	 *
-	 * @param args
-	 *			Unused
+	 * @param args Unused
 	 */
 	public static void main(String[] args) {
 		try {
 			int cubeSize = 14 * 3 * 10;
-					
+
 			// Get all the cards from the database
 			ArrayList<MtgCard> allCards = doDatabaseQuery();
 
@@ -60,10 +51,10 @@ public class CubeStats2 {
 			// Scale everything, but have double precision cards
 			scaleCounts(counts, cubeSize);
 			HashMap<String, cardCounts> originalScaled = deepCopyCounts(counts);
-			
+
 			// Round the cards to ints
 			roundCounts(counts);
-			
+
 			// Tweak for color balance
 			tweakCounts(counts, originalScaled, cubeSize);
 
@@ -103,7 +94,7 @@ public class CubeStats2 {
 		for (String key : counts.keySet()) {
 			totalCount += counts.get(key).getTotalCount();
 		}
-		
+
 		// Round each card to a whole number
 		for (String key : counts.keySet()) {
 			counts.get(key).scale(totalCount, cubeSize);
@@ -121,7 +112,7 @@ public class CubeStats2 {
 			counts.get(key).round();
 		}
 	}
-	
+
 	/**
 	 * TODO
 	 * 
@@ -129,38 +120,39 @@ public class CubeStats2 {
 	 * @param originalScaled
 	 * @param cubeSize
 	 */
-	private static void tweakCounts(HashMap<String, cardCounts> counts, HashMap<String, cardCounts> originalScaled, int cubeSize)
-	{
+	private static void tweakCounts(HashMap<String, cardCounts> counts, HashMap<String, cardCounts> originalScaled,
+			int cubeSize) {
 		// Find the average number of cards for a color
-		String[] colorKeys = { "White", "Blue", "Black", "Red", "Green" };
 		int coloredCounts = 0;
-		for (String key : colorKeys) {
+		for (String key : MagicConstants.SINGLE_COLOR_KEYS) {
 			coloredCounts += (int) counts.get(key).getTotalCount();
 		}
 		int avgColoredCount = Math.round(coloredCounts / 5.0f);
-		
+
 		// For each color, tweak it to match the average number of cards for a color
-		for (String key : colorKeys) {
-//			System.out.println("Tweaking " + key);
+		for (String key : MagicConstants.SINGLE_COLOR_KEYS) {
 			counts.get(key).tweak(avgColoredCount, originalScaled.get(key), cubeSize);
 		}
 
-		// See how many cards are in the current cube
+		// For gold cards, make sure it's a multiple of 10, steal them from colorless
+		int goldCount = (int) counts.get(MagicConstants.GOLD).getTotalCount();
+		int colorlessCount = (int) counts.get(MagicConstants.COLORLESS).getTotalCount();
+		while (goldCount % 10 != 0) {
+			goldCount++;
+			colorlessCount--;
+		}
+
+		// Then add colorless cards back until the cube size is right
 		int totalCountRounded = 0;
 		for (String key : counts.keySet()) {
 			totalCountRounded += counts.get(key).getTotalCount();
 		}
+		colorlessCount += (cubeSize - totalCountRounded);
 
-		// Add lands to get to the cube size
-		counts.get("Colorless").Land += (cubeSize - totalCountRounded);
-
-//		// Debug print
-//		totalCountRounded = 0;
-//		for (String key : counts.keySet()) {
-//			System.out.println(key + " " + counts.get(key).getTotalCount());
-//			totalCountRounded += counts.get(key).getTotalCount();
-//		}
-//		System.out.println("Rounded count " + totalCountRounded);
+		// Then tweak gold and colorless after their numbers are figured out
+		counts.get(MagicConstants.GOLD).tweak(goldCount, originalScaled.get(MagicConstants.GOLD), cubeSize);
+		counts.get(MagicConstants.COLORLESS).tweak(colorlessCount, originalScaled.get(MagicConstants.COLORLESS),
+				cubeSize);
 	}
 
 	/**
@@ -178,12 +170,11 @@ public class CubeStats2 {
 		dbConnection = DriverManager.getConnection("jdbc:sqlite:mtg.db");
 
 		Statement statement = dbConnection.createStatement();
-		ResultSet resultSet = statement.executeQuery(
-				"select cards.color_identity, cards.rarity, cards.cmc, cards.supertype, cards.color, cards.manacost\r\n"
-						+ "from cards join sets on cards.expansion = sets.code\r\n" + "where (\r\n"
-						+ "	sets.suggest_text_1 like '%Masters%' AND\r\n" + "	sets.online_only = 0 AND\r\n"
-						+ "	cards.number not like \"%B\")\r\n"
-						+ "order by cards.color_identity desc, cards.supertype desc, cards.cmc desc");
+		ResultSet resultSet = statement.executeQuery("select cards.rarity, cards.cmc, cards.supertype, cards.color\r\n"
+				+ "from cards join sets on cards.expansion = sets.code\r\n" + "where (\r\n"
+				+ "	sets.suggest_text_1 like '%Masters%' AND\r\n" + "	sets.online_only = 0 AND\r\n"
+				+ "	cards.number not like \"%B\")\r\n"
+				+ "order by cards.color_identity desc, cards.supertype desc, cards.cmc desc");
 
 		/* Objectify the results */
 		ArrayList<MtgCard> allCards = new ArrayList<>();
@@ -209,55 +200,17 @@ public class CubeStats2 {
 		HashMap<String, cardCounts> counts = new HashMap<>();
 
 		// For each type
-		for (String targetType : TYPES) {
+		for (String targetType : MagicConstants.TYPES) {
 			// Iterate over all the cards
 			for (int cIdx = 0; cIdx < allCards.size(); cIdx++) {
 				MtgCard cardToCheck = allCards.get(cIdx);
 				// If the type matches
 				if (cardToCheck.getType().toLowerCase().contains(targetType.toLowerCase())) {
-					// Figure out what bucket to put this card in
-
-					// Make sure this color bucket exists first
+					// Make sure this color bucket exists first, then add the card
 					if (!counts.containsKey(cardToCheck.getColorKey())) {
 						counts.put(cardToCheck.getColorKey(), new cardCounts());
 					}
-					cardCounts colorBucket = counts.get(cardToCheck.getColorKey());
-
-					switch (targetType) {
-						case "Creature": {
-							if (!colorBucket.Creature.containsKey(cardToCheck.getCmc())) {
-								colorBucket.Creature.put(cardToCheck.getCmc(), (double) 0);
-							}
-							double currentCount = colorBucket.Creature.get(cardToCheck.getCmc());
-							colorBucket.Creature.put(cardToCheck.getCmc(),
-									currentCount + cardToCheck.getRarityMultiplier());
-							break;
-						}
-						case "Artifact": {
-							colorBucket.Artifact += cardToCheck.getRarityMultiplier();
-							break;
-						}
-						case "Enchantment": {
-							colorBucket.Enchantment += cardToCheck.getRarityMultiplier();
-							break;
-						}
-						case "Instant": {
-							colorBucket.Instant += cardToCheck.getRarityMultiplier();
-							break;
-						}
-						case "Sorcery": {
-							colorBucket.Sorcery += cardToCheck.getRarityMultiplier();
-							break;
-						}
-						case "Planeswalker": {
-							colorBucket.Planeswalker += cardToCheck.getRarityMultiplier();
-							break;
-						}
-						case "Land": {
-							colorBucket.Land += cardToCheck.getRarityMultiplier();
-							break;
-						}
-					}
+					counts.get(cardToCheck.getColorKey()).putCard(targetType, cardToCheck);
 
 					// Remove the card and set the index back one
 					allCards.remove(cIdx);
@@ -274,6 +227,15 @@ public class CubeStats2 {
 	 * @param counts
 	 */
 	private static void printResults(HashMap<String, cardCounts> counts) {
+
+		// Debug print
+//		double totalCountRounded = 0;
+//		for (String key : counts.keySet()) {
+//			System.out.println(key + " " + counts.get(key).getTotalCount());
+//			totalCountRounded += counts.get(key).getTotalCount();
+//		}
+//		System.out.println("Rounded count " + totalCountRounded);
+
 		Gson gson = new GsonBuilder().enableComplexMapKeySerialization().setPrettyPrinting().create();
 		String str = gson.toJson(counts);
 		System.out.println(str);
