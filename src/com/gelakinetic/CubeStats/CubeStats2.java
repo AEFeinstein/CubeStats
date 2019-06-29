@@ -170,11 +170,18 @@ public class CubeStats2 {
 		dbConnection = DriverManager.getConnection("jdbc:sqlite:mtg.db");
 
 		Statement statement = dbConnection.createStatement();
-		ResultSet resultSet = statement.executeQuery("select cards.rarity, cards.cmc, cards.supertype, cards.color\r\n"
-				+ "from cards join sets on cards.expansion = sets.code\r\n" + "where (\r\n"
-				+ "	sets.suggest_text_1 like '%Masters%' AND\r\n" + "	sets.online_only = 0 AND\r\n"
-				+ "	cards.number not like \"%B\")\r\n"
-				+ "order by cards.color_identity desc, cards.supertype desc, cards.cmc desc");
+		ResultSet resultSet = statement.executeQuery(
+				"SELECT\r\n" + 
+				"	cards.rarity,\r\n" + 
+				"	cards.cmc,\r\n" + 
+				"	cards.supertype,\r\n" + 
+				"	cards.color\r\n" + 
+				"FROM cards JOIN sets ON cards.expansion = sets.code\r\n" + 
+				"WHERE (\r\n" + 
+				"	sets.suggest_text_1 like '%Masters%' AND\r\n" + 
+				"	sets.online_only = 0 AND\r\n" + 
+				"	cards.number not like '%B')\r\n" + 
+				"ORDER BY cards.color_identity DESC, cards.supertype DESC, cards.cmc DESC");
 
 		/* Objectify the results */
 		ArrayList<MtgCard> allCards = new ArrayList<>();
