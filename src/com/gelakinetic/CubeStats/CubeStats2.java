@@ -60,6 +60,19 @@ public class CubeStats2 {
 
 			// Print the results
 			printResults(counts);
+			
+			QueryBuilder qb = new QueryBuilder();
+			WhereBuilder wb = new WhereBuilder();
+			String query = qb
+					.selectAll()
+					.fromAll()
+					.where(wb
+							.cmcEquals(1).and()
+							.typeLike("Creature").and()
+							.colorEquals("W"))
+					.build();
+			
+			System.out.print(query);
 
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
