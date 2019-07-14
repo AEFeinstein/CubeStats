@@ -1,5 +1,6 @@
 package com.gelakinetic.CubeStats;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -25,7 +26,8 @@ class cardCounts {
 		}
 	};
 
-	private final TreeMap<String, Double> counts = new TreeMap<>(typeKeyComparator);
+	final TreeMap<String, Double> counts = new TreeMap<>(typeKeyComparator);
+	final transient HashMap<String, ArrayList<MtgCard>> bucketedCards = new HashMap<>();
 
 	/**
 	 * TODO
@@ -62,6 +64,15 @@ class cardCounts {
 		}
 		currentCount += cardToCheck.getRarityMultiplier();
 		this.counts.put(targetType, currentCount);
+
+		// Save the actual card
+		if (null == bucketedCards.get(targetType)) {
+			bucketedCards.put(targetType, new ArrayList<MtgCard>());
+		}
+
+		if (!bucketedCards.get(targetType).contains(cardToCheck)) {
+			bucketedCards.get(targetType).add(cardToCheck);
+		}
 	}
 
 	/**

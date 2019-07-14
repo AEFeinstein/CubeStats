@@ -24,5 +24,5 @@ public class MagicConstants {
 	 */
 	public static final String[] TYPES = { CREATURE, ARTIFACT, ENCHANTMENT, INSTANT, SORCERY, PLANESWALKER, LAND };
 	public static final String[] SINGLE_COLOR_KEYS = { WHITE, BLUE, BLACK, RED, GREEN };
-
+	public static final String[] COLOR_CHARS = { "W", "U", "B", "R", "G" };
 }
