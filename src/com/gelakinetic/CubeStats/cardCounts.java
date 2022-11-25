@@ -1,27 +1,19 @@
 package com.gelakinetic.CubeStats;
 
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
+import java.util.*;
 
 class cardCounts {
 
-	private transient final Comparator<String> typeKeyComparator = new Comparator<String>() {
-		@Override
-		public int compare(String s1, String s2) {
-			// Two non-creature
-			if (!s1.contains("-") || !s2.contains("-")) {
-				return s1.compareTo(s2);
-			}
-			// Two creature
-			else {
-				int cmc1 = Integer.parseInt(s1.split("-")[1]);
-				int cmc2 = Integer.parseInt(s2.split("-")[1]);
-				return Integer.compare(cmc1, cmc2);
-			}
+	private transient final Comparator<String> typeKeyComparator = (s1, s2) -> {
+		// Two non-creature
+		if (!s1.contains("-") || !s2.contains("-")) {
+			return s1.compareTo(s2);
+		}
+		// Two creature
+		else {
+			int cmc1 = Integer.parseInt(s1.split("-")[1]);
+			int cmc2 = Integer.parseInt(s2.split("-")[1]);
+			return Integer.compare(cmc1, cmc2);
 		}
 	};
 
@@ -42,7 +34,6 @@ class cardCounts {
 	 * TODO
 	 */
 	public cardCounts() {
-		;
 	}
 
 	/**
@@ -85,7 +76,7 @@ class cardCounts {
 	 */
 	public void scale(double totalCount, int cubeSize) {
 		for (String key : counts.keySet()) {
-			counts.put(key, (double) ((counts.get(key) / totalCount) * cubeSize));
+			counts.put(key, (counts.get(key) / totalCount) * cubeSize);
 		}
 	}
 
@@ -93,9 +84,7 @@ class cardCounts {
 	 * TODO
 	 */
 	public void round() {
-		for (String key : counts.keySet()) {
-			counts.put(key, (double) Math.round(counts.get(key)));
-		}
+		counts.replaceAll((k, v) -> (double) Math.round(counts.get(k)));
 	}
 
 	/**
@@ -103,9 +92,8 @@ class cardCounts {
 	 * 
 	 * @param avgColoredCount
 	 * @param originalCounts
-	 * @param cubeSize
 	 */
-	public void tweak(int avgColoredCount, cardCounts originalCounts, int cubeSize) {
+	public void tweak(int avgColoredCount, cardCounts originalCounts) {
 
 		// See how many cards we're off by
 		int diff = (int) (this.getTotalCount() - avgColoredCount);
@@ -113,34 +101,39 @@ class cardCounts {
 			return;
 		}
 
-		// Find the errors for each key, -0.5 to 0.5
-		HashMap<Double, String> errors = new HashMap<>();
-		for (String key : originalCounts.counts.keySet()) {
-			double error = originalCounts.counts.get(key) - Math.round(originalCounts.counts.get(key));
-			errors.put(error, key);
-		}
+		// While we're not at the target number of cards
+		while(diff != 0) {
+			// Find the errors for each key
+			HashMap<Double, String> errors = new HashMap<>();
+			for (String key : originalCounts.counts.keySet()) {
+				double error = originalCounts.counts.get(key) - Math.round(this.counts.get(key));
+				errors.put(error, key);
+			}
 
-		// Sort the errors
-		List<Double> sortedKeys = errors.keySet().stream().collect(Collectors.toList());
-		Collections.sort(sortedKeys);
+			// Sort the errors
+			List<Double> sortedKeys = new ArrayList<>(errors.keySet());
+			Collections.sort(sortedKeys);
 
-		// While there are cards to add or remove
-		while (diff < 0) {
-			// Add cards
-			Double keyToAdd = sortedKeys.get(sortedKeys.size() - 1);
-			String typeKey = errors.get(keyToAdd);
-			double currentCount = this.counts.get(typeKey);
-			this.counts.put(typeKey, currentCount + 1);
-			sortedKeys.remove(keyToAdd);
-			diff++;
-		}
-		while (diff > 0) {
-			Double keyToRemove = sortedKeys.get(0);
-			String typeKey = errors.get(keyToRemove);
-			double currentCount = this.counts.get(typeKey);
-			this.counts.put(typeKey, currentCount - 1);
-			sortedKeys.remove(keyToRemove);
-			diff--;
+			// Either add or remove cards
+			if (diff < 0) {
+				// Add cards
+				Double keyToAdd = sortedKeys.get(sortedKeys.size() - 1);
+				String typeKey = errors.get(keyToAdd);
+				double currentCount = this.counts.get(typeKey);
+				this.counts.put(typeKey, currentCount + 1);
+				diff++;
+			}
+			else {
+				for (Double keyToRemove : sortedKeys) {
+					String typeKey = errors.get(keyToRemove);
+					double currentCount = this.counts.get(typeKey);
+					if (currentCount > 0) {
+						this.counts.put(typeKey, currentCount - 1);
+						diff--;
+						break;
+					}
+				}
+			}
 		}
 	}
 }

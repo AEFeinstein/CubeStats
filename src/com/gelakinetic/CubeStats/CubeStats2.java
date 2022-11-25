@@ -40,7 +40,7 @@ public class CubeStats2 {
 	 */
 	public static void main(String[] args) {
 		try {
-			int cubeSize = 14 * 3 * 10;
+			int cubeSize = 15 * 3 * 8;
 
 			// Get all the cards from the database
 			ArrayList<MtgCard> allCards = doDatabaseQuery();
@@ -61,9 +61,7 @@ public class CubeStats2 {
 			// Print the results
 			printResults(counts);
 
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		} catch (SQLException e) {
+		} catch (ClassNotFoundException | SQLException e) {
 			e.printStackTrace();
 		}
 	}
@@ -131,7 +129,7 @@ public class CubeStats2 {
 
 		// For each color, tweak it to match the average number of cards for a color
 		for (String key : MagicConstants.SINGLE_COLOR_KEYS) {
-			counts.get(key).tweak(avgColoredCount, originalScaled.get(key), cubeSize);
+			counts.get(key).tweak(avgColoredCount, originalScaled.get(key));
 		}
 
 		// For gold cards, make sure it's a multiple of 10, steal them from colorless
@@ -150,9 +148,8 @@ public class CubeStats2 {
 		colorlessCount += (cubeSize - totalCountRounded);
 
 		// Then tweak gold and colorless after their numbers are figured out
-		counts.get(MagicConstants.GOLD).tweak(goldCount, originalScaled.get(MagicConstants.GOLD), cubeSize);
-		counts.get(MagicConstants.COLORLESS).tweak(colorlessCount, originalScaled.get(MagicConstants.COLORLESS),
-				cubeSize);
+		counts.get(MagicConstants.GOLD).tweak(goldCount, originalScaled.get(MagicConstants.GOLD));
+		counts.get(MagicConstants.COLORLESS).tweak(colorlessCount, originalScaled.get(MagicConstants.COLORLESS));
 	}
 
 	/**
@@ -169,29 +166,100 @@ public class CubeStats2 {
 		Class.forName("org.sqlite.JDBC");
 		dbConnection = DriverManager.getConnection("jdbc:sqlite:mtg.db");
 
-		Statement statement = dbConnection.createStatement();
-		ResultSet resultSet = statement.executeQuery(
-				"SELECT\r\n" + 
-				"	cards.rarity,\r\n" + 
-				"	cards.cmc,\r\n" + 
-				"	cards.supertype,\r\n" + 
-				"	cards.color\r\n" + 
-				"FROM cards JOIN sets ON cards.expansion = sets.code\r\n" + 
-				"WHERE (\r\n" + 
-				"	sets.suggest_text_1 like '%Masters%' AND\r\n" + 
-				"	sets.online_only = 0 AND\r\n" + 
-				"	cards.number not like '%B')\r\n" + 
-				"ORDER BY cards.color_identity DESC, cards.supertype DESC, cards.cmc DESC");
-
-		/* Objectify the results */
-		ArrayList<MtgCard> allCards = new ArrayList<>();
-		while (resultSet.next()) {
-			allCards.add(new MtgCard(resultSet));
+		// Get a list of all core sets after Alliances (834379200), when the 15 card booster started
+		ArrayList<String> coreSetCodes = new ArrayList<>();
+		String setQuery = "SELECT code FROM sets WHERE set_type = 'core' AND date > 834379200";
+		Statement setStatement = dbConnection.createStatement();
+		ResultSet queryResult = setStatement.executeQuery(setQuery);
+		while(queryResult.next())
+		{
+			coreSetCodes.add(queryResult.getString(queryResult.findColumn("code")));
 		}
+		queryResult.close();
+		setStatement.close();
 
-		/* Clean up */
-		resultSet.close();
-		statement.close();
+		// Start a collection of all cards to analyze
+		ArrayList<MtgCard> allCards = new ArrayList<>();
+
+		// For each set code
+		for (String setCode : coreSetCodes) {
+			Statement statement = dbConnection.createStatement();
+			// Select all non-backface, non-basic lands with unique names
+			String query =
+					"SELECT\n" +
+							"	DISTINCT suggest_text_1,\n" +
+							"	rarity,\n" +
+							"	cmc,\n" +
+							"	supertype,\n" +
+							"	color\n" +
+							"FROM cards\n" +
+							"WHERE (\n" +
+							"   expansion = '" + setCode + "' AND \n" +
+							"   supertype NOT LIKE 'Basic %' AND \n" +
+							"   number NOT LIKE '%b')";
+			ResultSet resultSet = statement.executeQuery(query);
+
+			/* Objectify the results */
+			ArrayList<MtgCard> setCards = new ArrayList<>();
+			while (resultSet.next()) {
+				setCards.add(new MtgCard(resultSet));
+			}
+
+			/* Clean up */
+			resultSet.close();
+			statement.close();
+
+			/* Count up all commons, uncommons, and rares */
+			float[] rarityCount = {0,0,0,0,0};
+			for(MtgCard card : setCards)
+			{
+				switch (card.rarity){
+					case 'c':
+					case 'C':
+					{
+						rarityCount[0]++;
+						break;
+					}
+					case 'u':
+					case 'U':
+					{
+						rarityCount[1]++;
+						break;
+					}
+					case 'r':
+					case 'R':
+					{
+						rarityCount[2]++;
+						break;
+					}
+					case 'm':
+					case 'M':
+					{
+						rarityCount[3]++;
+						break;
+					}
+					case 't':
+					case 'T':
+					{
+						rarityCount[4]++;
+						break;
+					}
+				}
+			}
+
+//			if(rarityCount[3] > 0){
+//				System.out.println(String.format("%3s [%1.4f, %1.4f, %1.4f, %1.4f]", setCode, 11/rarityCount[0], 3/rarityCount[1], 7/(8*rarityCount[2]), 1/(8*rarityCount[3])));
+//			}
+//			else {
+//				System.out.println(String.format("%3s [%1.4f, %1.4f, %1.4f, %1.4f]", setCode, 11/rarityCount[0], 3/rarityCount[1], 1/rarityCount[2], 0.0f));
+//			}
+
+			/* Set rarity multipliers based on the number of commons, uncommons, and rares */
+			for(MtgCard card : setCards) {
+				card.setRarityMultiplier(rarityCount);
+			}
+			allCards.addAll(setCards);
+		}
 
 		return allCards;
 	}
