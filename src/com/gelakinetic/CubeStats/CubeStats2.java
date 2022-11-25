@@ -58,6 +58,12 @@ public class CubeStats2 {
             // Print the results
             printResults(counts);
 
+            // Also print in a spreadsheet-friendly format
+            for (String key : counts.keySet()) {
+                System.out.print(key);
+                counts.get(key).printCSV();
+            }
+
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
@@ -115,8 +121,7 @@ public class CubeStats2 {
      * @param originalScaled
      * @param cubeSize
      */
-    private static void tweakCounts(HashMap<String, cardCounts> counts, HashMap<String, cardCounts> originalScaled,
-                                    int cubeSize) {
+    private static void tweakCounts(HashMap<String, cardCounts> counts, HashMap<String, cardCounts> originalScaled, int cubeSize) {
         // Find the average number of cards for a color
         int coloredCounts = 0;
         for (String key : MagicConstants.SINGLE_COLOR_KEYS) {
@@ -181,18 +186,7 @@ public class CubeStats2 {
         for (String setCode : coreSetCodes) {
             Statement statement = dbConnection.createStatement();
             // Select all non-backface, non-basic lands with unique names
-            String query =
-                    "SELECT\n" +
-                            "	DISTINCT suggest_text_1,\n" +
-                            "	rarity,\n" +
-                            "	cmc,\n" +
-                            "	supertype,\n" +
-                            "	color\n" +
-                            "FROM cards\n" +
-                            "WHERE (\n" +
-                            "   expansion = '" + setCode + "' AND \n" +
-                            "   supertype NOT LIKE 'Basic %' AND \n" +
-                            "   number NOT LIKE '%b')";
+            String query = "SELECT\n" + "	DISTINCT suggest_text_1,\n" + "	rarity,\n" + "	cmc,\n" + "	supertype,\n" + "	color\n" + "FROM cards\n" + "WHERE (\n" + "   expansion = '" + setCode + "' AND \n" + "   supertype NOT LIKE 'Basic %' AND \n" + "   number NOT LIKE '%b')";
             ResultSet resultSet = statement.executeQuery(query);
 
             /* Objectify the results */

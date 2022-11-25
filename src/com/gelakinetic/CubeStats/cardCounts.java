@@ -133,4 +133,12 @@ class cardCounts {
             }
         }
     }
+
+    public void printCSV() {
+        for (String key : this.counts.keySet()) {
+            if (this.counts.get(key) > 0) {
+                System.out.println("\t" + key + "\t" + this.counts.get(key).intValue());
+            }
+        }
+    }
 }

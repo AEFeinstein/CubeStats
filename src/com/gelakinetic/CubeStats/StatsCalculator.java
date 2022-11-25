@@ -100,8 +100,7 @@ public class StatsCalculator {
 
             /* Open up the database */
             Class.forName("org.sqlite.JDBC");
-            dbConnection = DriverManager.getConnection(
-                    "jdbc:sqlite:mtg.db");
+            dbConnection = DriverManager.getConnection("jdbc:sqlite:mtg.db");
 
             /* For all the colors */
             for (String[] color : COLORS) {
@@ -120,10 +119,8 @@ public class StatsCalculator {
 
                             /* Do the query and store the result */
                             System.out.println("\t\t" + cmc);
-                            int count = getScaledQueryCount(dbConnection,
-                                    color, type, notTypes, cmc);
-                            allStats.add(new CubeStats(color[0], type, cmc,
-                                    count));
+                            int count = getScaledQueryCount(dbConnection, color, type, notTypes, cmc);
+                            allStats.add(new CubeStats(color[0], type, cmc, count));
 
                             /* Keep a count of all scaled query counts */
                             totalSize += count;
@@ -132,10 +129,8 @@ public class StatsCalculator {
 
                         /* For non-creatures, don't worry about converted mana
                          * cost. Do the query and store the result */
-                        int count = getScaledQueryCount(dbConnection, color,
-                                type, notTypes, -1);
-                        allStats.add(new CubeStats(color[0], type, -1,
-                                count));
+                        int count = getScaledQueryCount(dbConnection, color, type, notTypes, -1);
+                        allStats.add(new CubeStats(color[0], type, -1, count));
 
                         /* Keep a count of all scaled query counts */
                         totalSize += count;
@@ -154,8 +149,7 @@ public class StatsCalculator {
                     /* Do a little math to scale to the cube size, round, and clamp
                      * to an integer
                      */
-                    int cubeCount = (int) Math.round(
-                            CUBE_SIZE * (stats.mCount / ((double) totalSize)));
+                    int cubeCount = (int) Math.round(CUBE_SIZE * (stats.mCount / ((double) totalSize)));
 
                     /* If there is some number of this color/type/cmc combo */
                     if (stats.mCount != 0) {
@@ -182,8 +176,7 @@ public class StatsCalculator {
                     dbConnection.close();
                 } catch (SQLException e) {
                     /* For exceptions, just print them out and exit cleanly */
-                    System.err.println(e.getClass().getName() + ": " +
-                            e.getMessage());
+                    System.err.println(e.getClass().getName() + ": " + e.getMessage());
                     System.exit(0);
                     e.printStackTrace();
                 }
@@ -205,9 +198,7 @@ public class StatsCalculator {
      * @return The number of rows returned by the query, scaled by rarity
      * @throws SQLException
      */
-    public static int getScaledQueryCount(Connection connection,
-                                          String[] colors, String type, ArrayList<String> notTypes, int cmc)
-            throws SQLException {
+    public static int getScaledQueryCount(Connection connection, String[] colors, String type, ArrayList<String> notTypes, int cmc) throws SQLException {
 
         int scaledCount = 0;
 
@@ -216,8 +207,7 @@ public class StatsCalculator {
 
             /* Perform the query */
             Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(buildQuery(colors,
-                    type, notTypes, rarity.mRarity, cmc));
+            ResultSet resultSet = statement.executeQuery(buildQuery(colors, type, notTypes, rarity.mRarity, cmc));
 
             /* Count the results */
             int tmpCount = 0;
@@ -246,15 +236,10 @@ public class StatsCalculator {
      *               If this value is negative, it is ignored
      * @return A SQL query to search for cards
      */
-    public static String buildQuery(String[] colors, String type, ArrayList<String> notTypes, char rarity,
-                                    int cmc) {
+    public static String buildQuery(String[] colors, String type, ArrayList<String> notTypes, char rarity, int cmc) {
 
         /* Select all cards from Modern, excluding basic lands */
-        String query = "SELECT cards._id FROM"
-                + " (cards JOIN legal_sets"
-                + " ON (cards.expansion = legal_sets.expansion))"
-                + " WHERE (legal_sets.format = 'Modern')"
-                + " AND (cards.supertype NOT LIKE 'Basic%')";
+        String query = "SELECT cards._id FROM" + " (cards JOIN legal_sets" + " ON (cards.expansion = legal_sets.expansion))" + " WHERE (legal_sets.format = 'Modern')" + " AND (cards.supertype NOT LIKE 'Basic%')";
 
         /* For nonlands, make sure they have a mana cost (filters multicards) */
         if (!type.equals("Land")) {
