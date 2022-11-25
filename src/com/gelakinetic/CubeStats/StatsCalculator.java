@@ -1,37 +1,37 @@
 /**
  * Copyright 2016 Adam Feinstein
- *
+ * <p>
  * This file is part of CubeStats.
- *
+ * <p>
  * CubeStats is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * <p>
  * CubeStats is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with CubeStats.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package com.gelakinetic.CubeStats;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 
 public class StatsCalculator {
 
-    /** The size of the desired cube */
-    private static final int CUBE_SIZES[] = {450, 451, 452, 453, 454, 455};
+    /**
+     * The size of the desired cube
+     */
+    private static final int[] CUBE_SIZES = {450, 451, 452, 453, 454, 455};
 
-    /** All the colors. The first entry to each array is just a label */
+    /**
+     * All the colors. The first entry to each array is just a label
+     */
     private static final String[][] COLORS = {
             {"White", "W", "AW"},
             {"Blue", "U", "AU"},
@@ -41,16 +41,16 @@ public class StatsCalculator {
             {"Colorless", "A", "C"},
             {"Land", "L", "LG", "AL"},
             {"Gold",
-                "WG", "WB", "UR", "RG", "WR", "UG", "WU", "UB", "BR", "BG",
-                "AWG", "AWB", "AUR", "ARG", "AWR", "AUG", "AWU", "AUB", "ABR", "ABG",
-                "UBR", "BRG", "WRG", "WUG", "WUB", "WBR", "UBG", "URG", "WUR", "WBG",
-                "AUBR", "ABRG", "AWRG", "AWUG", "AWUB", "AWBR", "AUBG", "AURG", "AWUR", "AWBG",
-                "WUBG", "WURG", "WBRG", "UBRG", "WUBR", 
-                "AWUBG", "AWURG", "AWBRG", "AUBRG", "AWUBR", 
-                "WUBRG", "AWUBRG"}
+                    "WG", "WB", "UR", "RG", "WR", "UG", "WU", "UB", "BR", "BG",
+                    "AWG", "AWB", "AUR", "ARG", "AWR", "AUG", "AWU", "AUB", "ABR", "ABG",
+                    "UBR", "BRG", "WRG", "WUG", "WUB", "WBR", "UBG", "URG", "WUR", "WBG",
+                    "AUBR", "ABRG", "AWRG", "AWUG", "AWUB", "AWBR", "AUBG", "AURG", "AWUR", "AWBG",
+                    "WUBG", "WURG", "WBRG", "UBRG", "WUBR",
+                    "AWUBG", "AWURG", "AWBRG", "AUBRG", "AWUBR",
+                    "WUBRG", "AWUBRG"}
     };
 
-    /** 
+    /**
      * All the types. They are in distinct buckets (i.e. Artifact Lands don't
      * count as Artifacts. The search is ordered, so first it searches for all
      * lands, then creatures NOT lands, then artifacts NOT creatures NOT lands,
@@ -66,13 +66,17 @@ public class StatsCalculator {
             "Planeswalker",
     };
 
-    /** All the converted mana costs */
-    private static final int CONVERTED_MANA_COSTS[] = {
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+    /**
+     * All the converted mana costs
+     */
+    private static final int[] CONVERTED_MANA_COSTS = {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
     };
 
-    /** All the rarities, with their probability of occurrence */
-    private static final Rarity RARITIES[] = {
+    /**
+     * All the rarities, with their probability of occurrence
+     */
+    private static final Rarity[] RARITIES = {
             new Rarity('C', 88), /* Common      11  per pack */
             new Rarity('U', 24), /* Uncommon    3   per pack */
             new Rarity('R', 8),  /* Rare        1   per pack */
@@ -97,7 +101,7 @@ public class StatsCalculator {
             /* Open up the database */
             Class.forName("org.sqlite.JDBC");
             dbConnection = DriverManager.getConnection(
-                "jdbc:sqlite:mtg.db");
+                    "jdbc:sqlite:mtg.db");
 
             /* For all the colors */
             for (String[] color : COLORS) {
@@ -105,14 +109,14 @@ public class StatsCalculator {
 
                 ArrayList<String> notTypes = new ArrayList<>();
                 /* For all the card types */
-                for(String type : TYPES) {
+                for (String type : TYPES) {
                     System.out.println("\t" + type);
 
                     /* If the type is Creature */
-                    if(type.equals("Creature")) {
+                    if (type.equals("Creature")) {
 
                         /* For all the mana costs */
-                        for(int cmc : CONVERTED_MANA_COSTS) {
+                        for (int cmc : CONVERTED_MANA_COSTS) {
 
                             /* Do the query and store the result */
                             System.out.println("\t\t" + cmc);
@@ -124,8 +128,7 @@ public class StatsCalculator {
                             /* Keep a count of all scaled query counts */
                             totalSize += count;
                         }
-                    }
-                    else {
+                    } else {
 
                         /* For non-creatures, don't worry about converted mana
                          * cost. Do the query and store the result */
@@ -141,30 +144,30 @@ public class StatsCalculator {
                 }
             }
 
-            for(int CUBE_SIZE : CUBE_SIZES) {
-	            /* Now that we know the count for each color/type/cmc, and the total
-	             * number of returned rows, scale them to the desired cube size
-	             */
-	            int totalCubeCount = 0;
-	            for(CubeStats stats: allStats) {
-	
-	                /* Do a little math to scale to the cube size, round, and clamp
-	                 * to an integer
-	                 */
-	                int cubeCount = (int) Math.round(
-	                        CUBE_SIZE * (stats.mCount / ((double)totalSize)));
-	
-	                /* If there is some number of this color/type/cmc combo */
-	                if(stats.mCount != 0) {
-	
-	                    /* Print it out */
-	                    System.out.print(String.format("%s\t%d\t%.6f\n", stats, cubeCount, stats.mCount / ((double)totalSize)));
-	                    totalCubeCount += cubeCount;
-	                }
-	            }
-	
-	            /* Print the total number of scaled cube cards */
-	            System.out.println("Total Cube Count: " + totalCubeCount);
+            for (int CUBE_SIZE : CUBE_SIZES) {
+                /* Now that we know the count for each color/type/cmc, and the total
+                 * number of returned rows, scale them to the desired cube size
+                 */
+                int totalCubeCount = 0;
+                for (CubeStats stats : allStats) {
+
+                    /* Do a little math to scale to the cube size, round, and clamp
+                     * to an integer
+                     */
+                    int cubeCount = (int) Math.round(
+                            CUBE_SIZE * (stats.mCount / ((double) totalSize)));
+
+                    /* If there is some number of this color/type/cmc combo */
+                    if (stats.mCount != 0) {
+
+                        /* Print it out */
+                        System.out.printf("%s\t%d\t%.6f\n", stats, cubeCount, stats.mCount / ((double) totalSize));
+                        totalCubeCount += cubeCount;
+                    }
+                }
+
+                /* Print the total number of scaled cube cards */
+                System.out.println("Total Cube Count: " + totalCubeCount);
             }
         } catch (SQLException | ClassNotFoundException e) {
             /* For exceptions, just print them out and exit cleanly */
@@ -174,13 +177,13 @@ public class StatsCalculator {
         } finally {
 
             /* Close the database */
-            if(dbConnection != null) {
+            if (dbConnection != null) {
                 try {
                     dbConnection.close();
                 } catch (SQLException e) {
                     /* For exceptions, just print them out and exit cleanly */
                     System.err.println(e.getClass().getName() + ": " +
-                                       e.getMessage());
+                            e.getMessage());
                     System.exit(0);
                     e.printStackTrace();
                 }
@@ -194,22 +197,22 @@ public class StatsCalculator {
      * the rarity occurrence of cards in a pack
      *
      * @param connection A connection to the SQLite database
-     * @param colors The result must be one of the given colors (WUBRGALC)
-     * @param type   The result must be one of the given types (Land, Instant..)
-     * @param mRarity The result must be the given rarity ('C', 'U', etc)
-     * @param cmc    The result must have the given converted mana cost (0, 1..)
-     *               If this value is negative, it is ignored
+     * @param colors     The result must be one of the given colors (WUBRGALC)
+     * @param type       The result must be one of the given types (Land, Instant..)
+     * @param notTypes
+     * @param cmc        The result must have the given converted mana cost (0, 1..)
+     *                   If this value is negative, it is ignored
      * @return The number of rows returned by the query, scaled by rarity
      * @throws SQLException
      */
     public static int getScaledQueryCount(Connection connection,
-            String[] colors, String type, ArrayList<String> notTypes, int cmc)
+                                          String[] colors, String type, ArrayList<String> notTypes, int cmc)
             throws SQLException {
 
         int scaledCount = 0;
 
         /* For each rarity */
-        for(Rarity rarity : RARITIES) {
+        for (Rarity rarity : RARITIES) {
 
             /* Perform the query */
             Statement statement = connection.createStatement();
@@ -241,20 +244,20 @@ public class StatsCalculator {
      * @param rarity The result must be the given rarity ('C', 'U', etc)
      * @param cmc    The result must have the given converted mana cost (0, 1..)
      *               If this value is negative, it is ignored
-     * @return       A SQL query to search for cards
+     * @return A SQL query to search for cards
      */
     public static String buildQuery(String[] colors, String type, ArrayList<String> notTypes, char rarity,
-            int cmc) {
-        
+                                    int cmc) {
+
         /* Select all cards from Modern, excluding basic lands */
         String query = "SELECT cards._id FROM"
-            + " (cards JOIN legal_sets"
-            + " ON (cards.expansion = legal_sets.expansion))"
-            + " WHERE (legal_sets.format = 'Modern')"
-            + " AND (cards.supertype NOT LIKE 'Basic%')";
+                + " (cards JOIN legal_sets"
+                + " ON (cards.expansion = legal_sets.expansion))"
+                + " WHERE (legal_sets.format = 'Modern')"
+                + " AND (cards.supertype NOT LIKE 'Basic%')";
 
         /* For nonlands, make sure they have a mana cost (filters multicards) */
-        if(!type.equals("Land")) {
+        if (!type.equals("Land")) {
             query += " AND (cards.manacost != '')";
         }
 
@@ -264,11 +267,9 @@ public class StatsCalculator {
         }
 
         /* Add a supertype filter */
-        if (type != null) {
-            query += " AND (cards.supertype LIKE '%" + type + "%') ";
-        }
-        if(notTypes != null && !notTypes.isEmpty()) {
-            query += appendNotListToQuery("cards.supertype", notTypes);
+        query += " AND (cards.supertype LIKE '%" + type + "%') ";
+        if (notTypes != null && !notTypes.isEmpty()) {
+            query += appendNotListToQuery(notTypes);
         }
 
         /* Add a cmc filter */
@@ -277,8 +278,8 @@ public class StatsCalculator {
         }
 
         /* Add a color filter */
-        if(colors != null) {
-            query += appendListToQuery("cards.color", colors);
+        if (colors != null) {
+            query += appendListToQuery(colors);
         }
 
         /* Return the built query */
@@ -288,20 +289,19 @@ public class StatsCalculator {
     /**
      * Build a SQL string where the value in the given column cannot partially
      * match any of the given options
-     * 
-     * @param column    The column to check in the SQL database
-     * @param options   All the options the column cannot partially match
+     *
+     * @param options All the options the column cannot partially match
      * @return A string of the form:
-     *         " AND (field NOT LIKE '%option1%' AND field NOT LIKE '%option2%' ...)"
+     * " AND (field NOT LIKE '%option1%' AND field NOT LIKE '%option2%' ...)"
      */
-    private static String appendNotListToQuery(String column, ArrayList<String> options) {
+    private static String appendNotListToQuery(ArrayList<String> options) {
         boolean first = true;
-        String query = " AND (";
+        StringBuilder query = new StringBuilder(" AND (");
         for (String option : options) {
             if (!first) {
-                query += "AND ";
+                query.append("AND ");
             }
-            query += column + " NOT LIKE '%" + option + "%' ";
+            query.append("cards.supertype" + " NOT LIKE '%").append(option).append("%' ");
             first = false;
         }
         return query + ")";
@@ -311,19 +311,18 @@ public class StatsCalculator {
      * Build a SQL string which some field has to match at least one of the
      * options
      *
-     * @param  field   The field to check in the SQL database
-     * @param  options All the options for that field
+     * @param options All the options for that field
      * @return A string of the form:
-     *         " AND (field = 'option1' OR field = 'option2' OR ...)"
+     * " AND (field = 'option1' OR field = 'option2' OR ...)"
      */
-    private static String appendListToQuery(String field, String[] options) {
+    private static String appendListToQuery(String[] options) {
         boolean first = true;
-        String query = " AND (";
+        StringBuilder query = new StringBuilder(" AND (");
         for (String option : options) {
             if (!first) {
-                query += "OR ";
+                query.append("OR ");
             }
-            query += field + " = '" + option + "' ";
+            query.append("cards.color" + " = '").append(option).append("' ");
             first = false;
         }
         return query + ")";

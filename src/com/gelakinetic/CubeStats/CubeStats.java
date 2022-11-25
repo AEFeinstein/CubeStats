@@ -1,18 +1,18 @@
 /**
  * Copyright 2016 Adam Feinstein
- *
+ * <p>
  * This file is part of CubeStats.
- *
+ * <p>
  * CubeStats is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * <p>
  * CubeStats is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with CubeStats.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -21,17 +21,25 @@ package com.gelakinetic.CubeStats;
 
 public class CubeStats {
 
-    /** The color label for this statistics entry */
-    String mColor;
+    /**
+     * The color label for this statistics entry
+     */
+    final String mColor;
 
-    /** The type label for this statistics entry */
-    String mType;
+    /**
+     * The type label for this statistics entry
+     */
+    final String mType;
 
-    /** The converted mana cost for this statistics entry */
-    int mCmc;
+    /**
+     * The converted mana cost for this statistics entry
+     */
+    final int mCmc;
 
-    /** The scaled query result count for this statistics entry */
-    int mCount;
+    /**
+     * The scaled query result count for this statistics entry
+     */
+    final int mCount;
 
     /**
      * Plain 'ole constructor which sets the Rarity's variables
@@ -57,7 +65,7 @@ public class CubeStats {
         String label = mColor + ", " + mType;
 
         /* If the entry has a converted mana cost, add it to the label */
-        if(mCmc >= 0) {
+        if (mCmc >= 0) {
             return label + ", {" + mCmc + "}";
         }
 
